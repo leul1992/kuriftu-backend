@@ -1,29 +1,40 @@
 import { supabase } from '../../config/supabase.js';
 
 export const ScanService = {
-  async logScan(locationName, codeValue, challengeId) {
-    const { data, error } = await supabase
+  async logScan(userId, qrCodeId, challengeId) {
+    // 1. Verify QR code exists
+    const { data: qrCode, error: qrError } = await supabase
       .from('qr_codes')
+      .select('location_name, challenge_id')
+      .eq('id', qrCodeId)
+      .single();
+
+    if (qrError || !qrCode) throw new Error('Invalid QR code');
+
+    // 2. Log the scan (schema-accurate)
+    const { data: scan, error: scanError } = await supabase
+      .from('scan_logs')
       .insert({
-        location_name: locationName,
+        user_id: userId,
         qr_code_id: qrCodeId,
-        challenge_id: challengeId
+        challenge_id: challengeId || qrCode.challenge_id,
+        scanned_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (scanError) throw scanError;
 
-    // Automatically update challenge status if QR code is linked to challenge
-    if (challengeId) {
-      await supabase
-        .from('user_challenges')
-        .update({ status: 'completed' })
-        .eq('user_id', userId)
-        .eq('challenge_id', challengeId);
+    // 3. Complete challenge if applicable
+    const relevantChallengeId = challengeId || qrCode.challenge_id;
+    if (relevantChallengeId) {
+      await UserChallengeService.completeChallenge(
+        userId, 
+        relevantChallengeId
+      );
     }
 
-    return data;
+    return scan;
   },
 
   async getScanHistory(userId) {

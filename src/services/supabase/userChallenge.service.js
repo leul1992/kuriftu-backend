@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase.js';
+import { LoyaltyService } from './loyality.service.js';
 
 export const UserChallengeService = {
   async getUserChallenges(userId) {
@@ -28,6 +29,36 @@ export const UserChallengeService = {
     }
 
     return data || [];
+  },
+
+  async completeChallenge(userId, challengeId) {
+    // 1. Get challenge details
+    const { data: challenge, error: challengeError } = await supabase
+      .from('challenges')
+      .select('points')
+      .eq('id', challengeId)
+      .single();
+
+    if (challengeError) throw challengeError;
+
+    // 2. Update challenge status (schema-accurate)
+    const { data: updatedChallenge, error: updateError } = await supabase
+      .from('user_challenges')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('challenge_id', challengeId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // 3. Add loyalty points
+    await LoyaltyService.updateLoyaltyPoints(userId, challenge.points);
+
+    return updatedChallenge;
   },
 
   async createUserChallenge(userId, challengeId) {

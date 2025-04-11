@@ -49,7 +49,7 @@ router.post('/', authenticate, checkProfileExists, async (req, res) => {
     // Only accept editable fields from frontend
     const { first_name, last_name, age, profile_url } = req.body;
 
-    const profile = await ProfileService.createPofile(
+    const profile = await ProfileService.createProfile(
       userId,
       email,
       { first_name, last_name, age, profile_url }

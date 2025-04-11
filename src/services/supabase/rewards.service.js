@@ -16,7 +16,7 @@ export const RewardService = {
   },
 
   async redeemReward(userId, rewardId) {
-    // First get reward details to check points cost
+    // 1. Get reward cost
     const { data: reward, error: rewardError } = await supabase
       .from('rewards')
       .select('points_cost')
@@ -25,26 +25,41 @@ export const RewardService = {
 
     if (rewardError) throw rewardError;
 
-    // Create redemption record
+    // 2. Check user points (using correct table name)
+    const { data: userLoyalty, error: loyaltyError } = await supabase
+      .from('user_loyalty')
+      .select('points')
+      .eq('id', userId)
+      .single();
+
+    if (loyaltyError) throw loyaltyError;
+    if (userLoyalty.points < reward.points_cost) {
+      throw new Error('Insufficient points');
+    }
+
+    // 3. Create redemption (correct table name)
     const { data: redemption, error: redemptionError } = await supabase
       .from('user_redemptions')
       .insert({
         user_id: userId,
         reward_id: rewardId,
-        status: 'pending'
+        status: 'pending',
+        redeemed_at: new Date().toISOString()
       })
       .select()
       .single();
 
     if (redemptionError) throw redemptionError;
 
-    // Deduct points from user loyalty
-    const { error: loyaltyError } = await supabase.rpc('decrement_points', {
-      user_id: userId,
-      points: reward.points_cost
-    });
+    // 4. Deduct points (correct table name)
+    const { error: deductError } = await supabase
+      .from('user_loyalty')
+      .update({ 
+        points: userLoyalty.points - reward.points_cost 
+      })
+      .eq('id', userId);
 
-    if (loyaltyError) throw loyaltyError;
+    if (deductError) throw deductError;
 
     return redemption;
   },

@@ -4,13 +4,7 @@ export const LoyaltyService = {
   async getLoyaltyData(userId) {
     const { data, error } = await supabase
       .from('user_loyalty')
-      .select(`
-        *,
-        tier_definitions (
-          min_points,
-          benefits
-        )
-      `)
+      .select('*')
       .eq('id', userId)
       .single();
 
@@ -18,11 +12,39 @@ export const LoyaltyService = {
     return data;
   },
 
+  async createLoyaltyPoints(userId, initialPoints = 1000) {
+    console.log('creating loyalty');
+    const { data, error } = await supabase
+      .from('user_loyalty')
+      .insert([{ id: userId, points: initialPoints }]);
+
+    if (error) throw error;
+    return data;
+  },
+
   async updateLoyaltyPoints(userId, pointsChange) {
-    const { data, error } = await supabase.rpc('update_loyalty_points', {
-      user_id: userId,
-      points_change: pointsChange
-    });
+    // 1. Get current data
+    const { data: current, error: fetchError } = await supabase
+      .from('user_loyalty')
+      .select('points')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // 2. Calculate new points
+    const newPoints = current.points + pointsChange;
+
+    // 3. Update points
+    const { data, error } = await supabase
+      .from('user_loyalty')
+      .update({
+        points: newPoints,
+        last_updated: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
     if (error) throw error;
     return data;

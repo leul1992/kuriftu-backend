@@ -6,7 +6,7 @@ export const ChallengeService = {
    * @param {string} [category] - Optional category filter
    * @returns {Promise<Array>} List of challenges
    */
-  async getChallenges(category, page = 1, limit = 10) {
+  async getChallenges(category, page = 1, limit = 20) {
     let query = supabase
       .from('challenges')
       .select('*')
