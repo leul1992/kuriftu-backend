@@ -28,16 +28,53 @@ export const ChallengeService = {
    * @param {string} challengeId 
    * @returns {Promise<Object>} Challenge details
    */
-  async getChallengeById(challengeId) {
-    const { data, error } = await supabase
-      .from('challenges')
-      .select('*')
-      .eq('id', challengeId)
-      .single();
+  async getChallengeById(userId, challengeId) {
+    // Get all sub-challenges
+    const { data: subChallenges, error: subChallengesError } = await supabase
+      .from('sub_challenges')
+      .select('id, title, description, points')
+      .eq('challenge_id', challengeId);
 
-    if (error) throw error;
-    return data;
+    if (subChallengesError) throw subChallengesError;
+
+    // Get all existing user challenges in one query
+    const { data: existingEntries, error: existingEntriesError } = await supabase
+      .from('user_challenges')
+      .select('sub_challenge_id, verified')
+      .eq('user_id', userId)
+      .in('sub_challenge_id', subChallenges.map(sc => sc.id));
+
+    if (existingEntriesError) throw existingEntriesError;
+
+    // Create a map for quick lookup
+    const existingEntriesMap = new Map(
+      existingEntries.map(entry => [entry.sub_challenge_id, entry])
+    );
+
+    // Prepare batch insert for missing entries
+    const entriesToInsert = subChallenges
+      .filter(sc => !existingEntriesMap.has(sc.id))
+      .map(sc => ({
+        user_id: userId,
+        status: 'pending',
+        sub_challenge_id: sc.id,
+      }));
+
+    if (entriesToInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('user_challenges')
+        .insert(entriesToInsert);
+
+      if (insertError) throw insertError;
+    }
+
+    // Add verified status to each sub-challenge
+    return subChallenges.map(sc => ({
+      ...sc,
+      verified: existingEntriesMap.get(sc.id)?.verified || false
+    }));
   },
+
 
   /**
    * Create a new challenge (Admin only)

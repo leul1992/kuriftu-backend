@@ -8,6 +8,7 @@ import userChallengeRoutes from "./userChallenge.routes.js";
 import rewardRoutes from "./rewards.routes.js";
 import redemptionRoutes from "./redemption.routes.js";
 import scanRoutes from "./scans.routes.js";
+import hotelRoutes from "./booking.routes.js";
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use("/redemptions", redemptionRoutes);
 router.use("/user_tiers", tierRoutes);
 router.use("/scan_logs", scanRoutes);
 router.use("/tiers", loyaltyRoutes);
+router.use("/hotels", hotelRoutes);
 
 export default router;

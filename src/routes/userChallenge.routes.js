@@ -60,17 +60,16 @@ router.patch(
   }
 );
 
-// Admin verification endpoint
+// verification endpoint
 router.patch(
-  "/:id/verify",
+  "/",
   authenticate,
-  checkAdmin,
   requireCompleteProfile,
   async (req, res, next) => {
     try {
       const challenge = await UserChallengeService.verifyChallengeCompletion(
-        req.params.id,
-        req.body.verified
+        req.user.id,
+        req.body.subChallengeId
       );
       res.json({ status: "success", data: challenge });
     } catch (error) {

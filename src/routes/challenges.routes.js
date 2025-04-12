@@ -32,17 +32,18 @@ router.get('/', async (req, res, next) => {
  * @desc Get specific challenge by ID
  * @access Public
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/:challenge_id', authenticate, async (req, res, next) => {
   try {
-    const challenge = await ChallengeService.getChallengeById(req.params.id);
+    const sub_challenge = await ChallengeService.getChallengeById(req.user.id, req.params.challenge_id);
     res.json({
       status: 'success',
-      data: challenge
+      data: sub_challenge
     });
   } catch (error) {
     next(error);
   }
 });
+
 
 /**
  * @route POST /api/challenges

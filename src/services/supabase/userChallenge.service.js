@@ -95,15 +95,44 @@ export const UserChallengeService = {
     }
   },
 
-  async verifyChallengeCompletion(id, verified) {
-    const { data, error } = await supabase
+  async verifyChallengeCompletion(user_id, sub_challenge_id) {
+    // Check if the challenge is already verified
+    const { data: existingChallenge, error: fetchError } = await supabase
       .from('user_challenges')
-      .update({ verified })
-      .eq('id', id)
+      .select('verified')
+      .eq('user_id', user_id)
+      .eq('sub_challenge_id', sub_challenge_id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (existingChallenge?.verified) {
+      return { message: 'Already done this challenge' };
+    }
+
+    // Get the points from the sub_challenges table
+    const { data: subChallenge, error: subChallengeError } = await supabase
+      .from('sub_challenges')
+      .select('points')
+      .eq('id', sub_challenge_id)
+      .single();
+
+    if (subChallengeError) throw subChallengeError;
+
+    // Update the user_challenges table to mark as verified
+    const { data: updatedChallenge, error: updateError } = await supabase
+      .from('user_challenges')
+      .update({ verified: true, status: 'completed', completed_at: new Date().toISOString() })
+      .eq('user_id', user_id)
+      .eq('sub_challenge_id', sub_challenge_id)
       .select()
       .single();
 
-    if (error) throw error;
-    return data;
+    if (updateError) throw updateError;
+
+    // Update the user_loyalty table with the points
+    await LoyaltyService.updateLoyaltyPoints(user_id, subChallenge.points);
+
+    return updatedChallenge;
   }
 };

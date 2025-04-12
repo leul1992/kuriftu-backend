@@ -47,6 +47,7 @@ export const LoyaltyService = {
       .single();
 
     if (error) throw error;
+    if (error) console.log(error)
     return data;
   },
 
