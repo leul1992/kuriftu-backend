@@ -131,8 +131,8 @@ export const UserChallengeService = {
     if (updateError) throw updateError;
 
     // Update the user_loyalty table with the points
-    await LoyaltyService.updateLoyaltyPoints(user_id, subChallenge.points);
+    const data = await LoyaltyService.updateLoyaltyPoints(user_id, subChallenge.points);
 
-    return updatedChallenge;
+    return data.points;
   }
 };
