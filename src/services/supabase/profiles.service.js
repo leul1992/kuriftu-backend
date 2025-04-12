@@ -14,6 +14,10 @@ export const ProfileService = {
       .eq("id", userId)
       .single();
 
+    const loyalty = await LoyaltyService.getLoyaltyData(userId)
+
+    data['points'] = loyalty.points
+
     if (error) throw error;
     return data;
   },
